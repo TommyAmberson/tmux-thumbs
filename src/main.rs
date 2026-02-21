@@ -36,6 +36,12 @@ fn app_args<'a>() -> clap::ArgMatches<'a> {
         .default_value("qwerty"),
     )
     .arg(
+      Arg::with_name("alphabet_override")
+        .help("Overrides the alphabet with a custom order")
+        .long("alphabet-override")
+        .takes_value(true),
+    )
+    .arg(
       Arg::with_name("format")
         .help("Specifies the out format for the picked hint. (%U: Upcase, %H: Hint)")
         .long("format")
@@ -142,7 +148,8 @@ fn app_args<'a>() -> clap::ArgMatches<'a> {
 fn main() {
   let args = app_args();
   let format = args.value_of("format").unwrap();
-  let alphabet = args.value_of("alphabet").unwrap();
+  let alphabet_name = args.value_of("alphabet").unwrap();
+  let alphabet_override = args.value_of("alphabet_override");
   let position = args.value_of("position").unwrap();
   let target = args.value_of("target");
   let multi = args.is_present("multi");
@@ -172,6 +179,7 @@ fn main() {
 
   let lines = output.split('\n').collect::<Vec<&str>>();
 
+  let alphabet = alphabets::get_alphabet(alphabet_name, alphabet_override);
   let mut state = state::State::new(&lines, alphabet, &regexp);
 
   let selected = {

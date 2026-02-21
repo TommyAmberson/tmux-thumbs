@@ -469,4 +469,45 @@ mod tests {
     assert_eq!(results.get(7).unwrap().text.clone(), "8888");
     assert_eq!(results.get(8).unwrap().text.clone(), "https://crates.io/23456/fd70b569");
   }
+
+  #[test]
+  fn alphabet_override() {
+    let lines = split("Lorem [link](http://foo.bar) ipsum CUSTOM-52463 lorem ISSUE-123 lorem\nLorem /var/fd70b569/9999.log 52463 lorem\n Lorem 973113 lorem 123e4567-e89b-12d3-a456-426655440000 lorem 8888 lorem\n  https://crates.io/23456/fd70b569 lorem");
+    let custom = ["CUSTOM-[0-9]{4,}", "ISSUE-[0-9]{3}"].to_vec();
+    let alphabet_override = "a1b2";
+    let alphabet = crate::alphabets::get_alphabet("custom-alphanumeric", Some(alphabet_override));
+    let results = State::new(&lines, alphabet, &custom).matches(false, false);
+
+    assert_eq!(results.len(), 9);
+    assert_eq!(results.get(0).unwrap().hint.clone().unwrap(), "a");
+    assert_eq!(results.get(1).unwrap().hint.clone().unwrap(), "1");
+    assert_eq!(results.get(2).unwrap().hint.clone().unwrap(), "ba");
+    assert_eq!(results.get(3).unwrap().hint.clone().unwrap(), "b1");
+    assert_eq!(results.get(4).unwrap().hint.clone().unwrap(), "bb");
+    assert_eq!(results.get(5).unwrap().hint.clone().unwrap(), "2a");
+    assert_eq!(results.get(6).unwrap().hint.clone().unwrap(), "21");
+    assert_eq!(results.get(7).unwrap().hint.clone().unwrap(), "2b");
+    assert_eq!(results.get(8).unwrap().hint.clone().unwrap(), "22");
+  }
+
+
+  #[test]
+  fn alphabet_override_engram() {
+    let lines = split("Lorem [link](http://foo.bar) ipsum CUSTOM-52463 lorem ISSUE-123 lorem\nLorem /var/fd70b569/9999.log 52463 lorem\n Lorem 973113 lorem 123e4567-e89b-12d3-a456-426655440000 lorem 8888 lorem\n  https://crates.io/23456/fd70b569 lorem");
+    let custom = ["CUSTOM-[0-9]{4,}", "ISSUE-[0-9]{3}"].to_vec();
+    let alphabet_override = "cieabyougxjkhtsnqldwvzrmfp";
+    let alphabet = crate::alphabets::get_alphabet("my-layout", Some(alphabet_override));
+    let results = State::new(&lines, alphabet, &custom).matches(false, false);
+
+    assert_eq!(results.len(), 9);
+    assert_eq!(results.get(0).unwrap().hint.clone().unwrap(), "c");
+    assert_eq!(results.get(1).unwrap().hint.clone().unwrap(), "i");
+    assert_eq!(results.get(2).unwrap().hint.clone().unwrap(), "e");
+    assert_eq!(results.get(3).unwrap().hint.clone().unwrap(), "a");
+    assert_eq!(results.get(4).unwrap().hint.clone().unwrap(), "b");
+    assert_eq!(results.get(5).unwrap().hint.clone().unwrap(), "y");
+    assert_eq!(results.get(6).unwrap().hint.clone().unwrap(), "o");
+    assert_eq!(results.get(7).unwrap().hint.clone().unwrap(), "u");
+    assert_eq!(results.get(8).unwrap().hint.clone().unwrap(), "g");
+  }
 }

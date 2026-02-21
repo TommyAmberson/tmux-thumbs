@@ -64,7 +64,11 @@ impl<'a> Alphabet<'a> {
   }
 }
 
-pub fn get_alphabet(alphabet_name: &str) -> Alphabet {
+pub fn get_alphabet<'a>(alphabet_name: &'a str, alphabet_override: Option<&'a str>) -> Alphabet<'a> {
+    if let Some(override_letters) = alphabet_override {
+        return Alphabet::new(override_letters);
+    }
+
   let alphabets: HashMap<&str, &str> = ALPHABETS.iter().cloned().collect();
 
   alphabets

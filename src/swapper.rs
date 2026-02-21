@@ -172,6 +172,7 @@ impl<'a> Swapper<'a> {
 
           let string_params = vec![
             "alphabet",
+            "alphabet-override",
             "position",
             "fg-color",
             "bg-color",
