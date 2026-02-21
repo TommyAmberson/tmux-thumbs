@@ -2,6 +2,8 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
 
+use crate::alphabets::Alphabet;
+
 const EXCLUDE_PATTERNS: [(&'static str, &'static str); 1] = [("bash", r"[[:cntrl:]]\[([0-9]{1,2};)?([0-9]{1,2})?m")];
 
 const PATTERNS: [(&'static str, &'static str); 15] = [
@@ -56,12 +58,12 @@ impl<'a> PartialEq for Match<'a> {
 
 pub struct State<'a> {
   pub lines: &'a Vec<&'a str>,
-  alphabet: &'a str,
+  alphabet: Alphabet<'a>,
   regexp: &'a Vec<&'a str>,
 }
 
 impl<'a> State<'a> {
-  pub fn new(lines: &'a Vec<&'a str>, alphabet: &'a str, regexp: &'a Vec<&'a str>) -> State<'a> {
+  pub fn new(lines: &'a Vec<&'a str>, alphabet: Alphabet<'a>, regexp: &'a Vec<&'a str>) -> State<'a> {
     State {
       lines,
       alphabet,
@@ -150,8 +152,7 @@ impl<'a> State<'a> {
       }
     }
 
-    let alphabet = super::alphabets::get_alphabet(self.alphabet);
-    let mut hints = alphabet.hints(matches.len());
+    let mut hints = self.alphabet.hints(matches.len());
 
     // This looks wrong but we do a pop after
     if !reverse {
@@ -200,7 +201,7 @@ mod tests {
   fn match_reverse() {
     let lines = split("lorem 127.0.0.1 lorem 255.255.255.255 lorem 127.0.0.1 lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 3);
     assert_eq!(results.first().unwrap().hint.clone().unwrap(), "a");
@@ -211,7 +212,7 @@ mod tests {
   fn match_unique() {
     let lines = split("lorem 127.0.0.1 lorem 255.255.255.255 lorem 127.0.0.1 lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, true);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, true);
 
     assert_eq!(results.len(), 3);
     assert_eq!(results.first().unwrap().hint.clone().unwrap(), "a");
@@ -222,7 +223,7 @@ mod tests {
   fn match_docker() {
     let lines = split("latest sha256:30557a29d5abc51e5f1d5b472e79b7e296f595abcf19fe6b9199dbbc809c6ff4 20 hours ago");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 1);
     assert_eq!(
@@ -235,7 +236,7 @@ mod tests {
   fn match_bash() {
     let lines = split("path: [32m/var/log/nginx.log[m\npath: [32mtest/log/nginx-2.log:32[mfolder/.nginx@4df2.log");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 3);
     assert_eq!(results.get(0).unwrap().text, "/var/log/nginx.log");
@@ -247,7 +248,7 @@ mod tests {
   fn match_paths() {
     let lines = split("Lorem /tmp/foo/bar_lol, lorem\n Lorem /var/log/boot-strap.log lorem ../log/kern.log lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 3);
     assert_eq!(results.get(0).unwrap().text.clone(), "/tmp/foo/bar_lol");
@@ -259,7 +260,7 @@ mod tests {
   fn match_routes() {
     let lines = split("Lorem /app/routes/$routeId/$objectId, lorem\n Lorem /app/routes/$sectionId");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 2);
     assert_eq!(results.get(0).unwrap().text.clone(), "/app/routes/$routeId/$objectId");
@@ -270,7 +271,7 @@ mod tests {
   fn match_home() {
     let lines = split("Lorem ~/.gnu/.config.txt, lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 1);
     assert_eq!(results.get(0).unwrap().text.clone(), "~/.gnu/.config.txt");
@@ -280,7 +281,7 @@ mod tests {
   fn match_slugs() {
     let lines = split("Lorem dev/api/[slug]/foo, lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 1);
     assert_eq!(results.get(0).unwrap().text.clone(), "dev/api/[slug]/foo");
@@ -290,7 +291,7 @@ mod tests {
   fn match_uids() {
     let lines = split("Lorem ipsum 123e4567-e89b-12d3-a456-426655440000 lorem\n Lorem lorem lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 1);
   }
@@ -299,7 +300,7 @@ mod tests {
   fn match_shas() {
     let lines = split("Lorem fd70b5695 5246ddf f924213 lorem\n Lorem 973113963b491874ab2e372ee60d4b4cb75f717c lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 4);
     assert_eq!(results.get(0).unwrap().text.clone(), "fd70b5695");
@@ -315,7 +316,7 @@ mod tests {
   fn match_ips() {
     let lines = split("Lorem ipsum 127.0.0.1 lorem\n Lorem 255.255.10.255 lorem 127.0.0.1 lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 3);
     assert_eq!(results.get(0).unwrap().text.clone(), "127.0.0.1");
@@ -327,7 +328,7 @@ mod tests {
   fn match_ipv6s() {
     let lines = split("Lorem ipsum fe80::2:202:fe4 lorem\n Lorem 2001:67c:670:202:7ba8:5e41:1591:d723 lorem fe80::2:1 lorem ipsum fe80:22:312:fe::1%eth0");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 4);
     assert_eq!(results.get(0).unwrap().text.clone(), "fe80::2:202:fe4");
@@ -343,7 +344,7 @@ mod tests {
   fn match_markdown_urls() {
     let lines = split("Lorem ipsum [link](https://github.io?foo=bar) ![](http://cdn.com/img.jpg) lorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 2);
     assert_eq!(results.get(0).unwrap().pattern.clone(), "markdown_url");
@@ -356,7 +357,7 @@ mod tests {
   fn match_urls() {
     let lines = split("Lorem ipsum https://www.rust-lang.org/tools lorem\n Lorem ipsumhttps://crates.io lorem https://github.io?foo=bar lorem ssh://github.io");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 4);
     assert_eq!(results.get(0).unwrap().text.clone(), "https://www.rust-lang.org/tools");
@@ -373,7 +374,7 @@ mod tests {
   fn match_addresses() {
     let lines = split("Lorem 0xfd70b5695 0x5246ddf lorem\n Lorem 0x973113tlorem");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 3);
     assert_eq!(results.get(0).unwrap().text.clone(), "0xfd70b5695");
@@ -385,7 +386,7 @@ mod tests {
   fn match_hex_colors() {
     let lines = split("Lorem #fd7b56 lorem #FF00FF\n Lorem #00fF05 lorem #abcd00 lorem #afRR00");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 4);
     assert_eq!(results.get(0).unwrap().text.clone(), "#fd7b56");
@@ -398,7 +399,7 @@ mod tests {
   fn match_ipfs() {
     let lines = split("Lorem QmRdbNSxDJBXmssAc9fvTtux4duptMvfSGiGuq6yHAQVKQ lorem Qmfoobar");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 1);
     assert_eq!(
@@ -412,7 +413,7 @@ mod tests {
     let lines =
       split("Lorem 5695 52463 lorem\n Lorem 973113 lorem 99999 lorem 8888 lorem\n   23456 lorem 5432 lorem 23444");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 8);
   }
@@ -421,7 +422,7 @@ mod tests {
   fn match_diff_a() {
     let lines = split("Lorem lorem\n--- a/src/main.rs");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 1);
     assert_eq!(results.get(0).unwrap().text.clone(), "src/main.rs");
@@ -431,7 +432,7 @@ mod tests {
   fn match_diff_b() {
     let lines = split("Lorem lorem\n+++ b/src/main.rs");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 1);
     assert_eq!(results.get(0).unwrap().text.clone(), "src/main.rs");
@@ -441,7 +442,7 @@ mod tests {
   fn match_diff_summary() {
     let lines = split("diff --git a/samples/test1 b/samples/test2");
     let custom = [].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 2);
     assert_eq!(results.get(0).unwrap().text.clone(), "samples/test1");
@@ -452,7 +453,7 @@ mod tests {
   fn priority() {
     let lines = split("Lorem [link](http://foo.bar) ipsum CUSTOM-52463 lorem ISSUE-123 lorem\nLorem /var/fd70b569/9999.log 52463 lorem\n Lorem 973113 lorem 123e4567-e89b-12d3-a456-426655440000 lorem 8888 lorem\n  https://crates.io/23456/fd70b569 lorem");
     let custom = ["CUSTOM-[0-9]{4,}", "ISSUE-[0-9]{3}"].to_vec();
-    let results = State::new(&lines, "abcd", &custom).matches(false, false);
+    let results = State::new(&lines, Alphabet::new("abcd"), &custom).matches(false, false);
 
     assert_eq!(results.len(), 9);
     assert_eq!(results.get(0).unwrap().text.clone(), "http://foo.bar");

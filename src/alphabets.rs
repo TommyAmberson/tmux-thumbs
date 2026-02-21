@@ -30,7 +30,7 @@ pub struct Alphabet<'a> {
 }
 
 impl<'a> Alphabet<'a> {
-  fn new(letters: &'a str) -> Alphabet {
+  pub fn new(letters: &'a str) -> Alphabet {
     Alphabet { letters }
   }
 

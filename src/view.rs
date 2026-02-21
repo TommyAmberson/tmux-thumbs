@@ -320,7 +320,7 @@ mod tests {
   fn hint_text() {
     let lines = split("lorem 127.0.0.1 lorem");
     let custom = [].to_vec();
-    let mut state = state::State::new(&lines, "abcd", &custom);
+    let mut state = state::State::new(&lines, alphabets::Alphabet::new("abcd"), &custom);
     let mut view = View {
       state: &mut state,
       skip: 0,
